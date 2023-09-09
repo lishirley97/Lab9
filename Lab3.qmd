@@ -1,0 +1,279 @@
+---
+title: "Lab 3"
+format: html
+editor: visual
+---
+
+## Read the data
+
+```{r}
+library(data.table)
+library(tidyverse)
+#install.packages('R.utils')
+```
+
+```{r}
+download.file(
+"https://raw.githubusercontent.com/USCbiostats/data-science-data/master/02_met/met_all.gz",
+destfile = file.path("~", "Downloads", "met_all.gz"),
+method = "libcurl",
+timeout = 60
+)
+
+met <- data.table::fread(file.path("~", "Downloads", "met_all.gz"))
+```
+
+## Check dimensions, header, footers, etc.
+
+```{r}
+dim(met)
+```
+
+```{r}
+tail(met)
+```
+
+## Look at variables
+
+```{r}
+str(met)
+#structure function
+```
+
+## Look at key variables
+
+```{r}
+table(met$year)
+#generate table for integer value
+```
+
+```{r}
+table(met$day)
+```
+
+```{r}
+table(met$hour)
+```
+
+```{r}
+summary(met$temp)
+#summary to see numeric value quantiles, max, min
+```
+
+```{r}
+summary(met$elev)
+```
+
+```{r}
+summary(met$wind.sp)
+```
+
+```{r}
+met[met$elev==9999.0] <- NA
+summary(met$elev)
+# "==" check if equal to 
+# "!=" not equal to 
+#Replace elevations with 9999 as NA
+#Highest elevation is now 4113
+```
+
+```{r}
+met <- met[temp>-40]
+met2 <- met[order(temp)]
+head(met2)
+#Issue of the minimum temperature being -40C, so should remove those observations
+```
+
+## Check data against external data source (Google)
+
+```{r}
+met <- met[temp>-15]
+met2 <- met[order(temp)]
+head(met2)
+#removed temperatures colder than -15C. The new dataset has minimum temp -3C which is reasonable.
+```
+
+## Calculate summary stats
+
+```{r}
+elev <- met[elev==max(elev), ]
+summary(elev)
+```
+
+```{r}
+cor(elev$temp, elev$wind.sp, use="complete")
+```
+
+```{r}
+cor(elev$temp, elev$hour, use="complete")
+```
+
+```{r}
+cor(elev$wind.sp, elev$day, use="complete")
+```
+
+```{r}
+cor(elev$wind.sp, elev$hour, use="complete")
+```
+
+```{r}
+cor(elev$temp, elev$day, use="complete")
+```
+
+## Exploratory graphs
+
+```{r}
+hist(met$elev, breaks=100)
+```
+
+```{r}
+hist(met$temp)
+```
+
+```{r}
+boxplot(met$temp, col = blues9)
+#from lecture, "col = blue" to change color
+```
+
+```{r}
+hist(met$wind.sp)
+```
+
+```{r}
+#?addCircles
+#install.packages('leaflet')
+library(leaflet)
+```
+
+```{r}
+#install.packages("magrittr")
+#library(magrittr)
+#to avoid "could not find function "%>%"".
+```
+
+```{r}
+library(leaflet)
+
+#met_stations <- (unique(met[,c("lat","lon")]))  
+#dim(met_stations)
+
+#leaflet(met_stations) %>% 
+#  addProviderTiles('CartoDB.Positron') %>% 
+#  addCircles(lat = ~lat, lng = ~lon, opacity = 1, fillOpacity = 1, radius = 400)
+#from lecture, where the weather stations are located
+```
+
+```{r}
+#met_daily <- met[, .(
+#  temp = mean(temp),
+#  lat  = mean(lat),
+#  lon  = mean(lon),
+#  elev = mean(elev)
+#  ), by = c("USAFID", "day")][order(temp)]
+#head(met_daily)
+
+#tail(met_daily)
+
+#met_daily_dplyr <- met %>% 
+#  group_by(USAFID, day) %>%
+#  summarize(temp = mean(temp)) %>%
+#  arrange(desc(temp))
+
+#from lecture
+```
+
+```{r}
+#min <- met_daily[1]  # First observation.
+#max <- met_daily[.N] # Last obs, .N is a special symbol in data.table
+
+#leaflet() %>% 
+#  addProviderTiles('CartoDB.Positron') %>% 
+#  addCircles(
+#    data = min,
+#    lat = ~lat, lng = ~lon, popup = "Min temp.",
+#    opacity = 1, fillOpacity = 1, radius = 400, color = "blue") %>%
+#  addCircles(
+#    data = max,
+#    lat = ~lat, lng = ~lon, popup = "Max temp.",
+#    opacity=1, fillOpacity=1, radius = 400, color = "red")
+#from lecture, map the locations of the max and min daily temperatures (looks a little diff from lecture?)
+```
+
+```{r}
+#plot(met_daily$lat, met_daily$temp, pch=16, cex=0.25)
+
+#from lecture, scatterplot = temp get lower w/ higher lat - reasonable
+#19: filled circle
+#16: smaller filled circle
+#cex: size of points
+```
+
+```{r}
+#mod <- lm(temp ~ lat, data = met_daily)
+#met_daily[, plot(
+#  lat, temp, pch=19, cex=0.5, 
+#  main = "Temperature and Latitude", 
+#  xlab = "Latitude", ylab = "Temperature (deg C)")]
+#abline(mod, lwd=2, col="red")
+
+#lm = "linear model", adding trend line
+
+#better method of doing this
+
+#mod <- lm(temp ~ lat, data = met_daily)
+#abline(mod, lwd=2, col="red")
+
+#lm(y ~ x) = function of y and x
+#ab = refer to slope, intercept (linear line)
+#lwd = line width
+```
+
+```{r}
+leaflet(elev) %>%
+  addProviderTiles('OpenStreetMap') %>% 
+  addCircles(lat=~lat,lng=~lon, opacity=1, fillOpacity=1, radius=100)
+```
+
+```{r}
+library(lubridate)
+elev$date <- with(elev, ymd_h(paste(year, month, day, hour, sep= ' ')))
+summary(elev$date)
+#create date-time variable for x-axis
+```
+
+```{r}
+elev <- elev[order(date)]
+head(elev)
+```
+
+```{r}
+plot(elev$date, elev$temp, type='l')
+#plot the time series of temperature and wind speed
+```
+
+```{r}
+plot(elev$date, elev$wind.sp, type='l')
+```
+
+## Question
+
+What is the average atm.press in the United States? Is there a general trend?
+
+```{r}
+summary(met$atm.press)
+#reasonable minimum and maximum values
+```
+
+```{r}
+table(met$atm.press)
+```
+
+```{r}
+mean(is.na(met$atm.press))
+```
+
+```{r}
+hist(met$atm.press, breaks=100)
+```
+
+Average: 1014.2 Appears to have a normal distribution.
